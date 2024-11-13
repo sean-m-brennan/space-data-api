@@ -1,0 +1,40 @@
+# Intellij HTTP Client tests
+
+###
+# @name J2K conversion
+GET /convert?id=1&coords=[4, 5, 6]&original=ITRF93&new=J2000&dt_str=2022-07-25T14:30:00 HTTP/1.1
+Host: 127.0.0.1:8000
+
+> {%
+    function assertJsonPath(path, expectedValue) {
+        const value = jsonPath(response.body, path).toString();
+        client.assert(value === expectedValue, `Expected '${path}' to be '${expectedValue}' but got '${value}'`);
+    }
+    assertJsonPath("message.conversion.coordinates", "-5.426920120205441,-3.3772860286513966,6.011861366464254");
+%}
+
+###
+# @name LatLon conversion
+GET /fixed2j2k?id=2&lat=35.2&lon=106.3&alt=7000.0&dt_str=2024-07-25T14:30:00Z HTTP/1.1
+Host: 127.0.0.1:8000
+
+> {%
+    function assertJsonPath(path, expectedValue) {
+        const value = jsonPath(response.body, path).toString();
+        client.assert(value === expectedValue, `Expected '${path}' to be '${expectedValue}' but got '${value}'`);
+    }
+    assertJsonPath("message.conversion.coordinates", "-500.9971855912586,-10919.268847069785,7713.178285000932");
+%}
+
+###
+# @name Conversion error
+GET /fixed2j2k?id=3&lat=35.2&lon=106.3&alt=7000.0&dt_str=abc HTTP/1.1
+Host: 127.0.0.1:8000
+
+> {%
+    function assertJsonPath(path, expectedValue) {
+        const value = jsonPath(response.body, path).toString();
+        client.assert(value === expectedValue, `Expected '${path}' to be '${expectedValue}' but got '${value}'`);
+    }
+    assertJsonPath("message.error.msg", "Invalid isoformat string: 'abc'");
+%}

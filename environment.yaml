@@ -1,0 +1,12 @@
+name: space_data_api
+dependencies:
+  - python==3.12.*
+  - numpy
+  - fastapi
+  - uvicorn
+  - spiceypy
+  - requests
+  - beautifulsoup4
+  - pytest
+  - pytest-asyncio
+
