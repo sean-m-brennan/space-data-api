@@ -1,4 +1,4 @@
-from api.spice_converter import download
+from api.spice_converter import SpiceQuery
 
 if __name__ == '__main__':
-    download()
+    SpiceQuery().download()
