@@ -1,0 +1,41 @@
+{
+  "name": "space-data-api",
+  "version": "0.1.0",
+  "authors": [
+    "Sean Brennan <sean_m_brennan@mail.com>"
+  ],
+  "homepage": "https://sean-m-brennan.github.io/space-data-api/",
+  "license": "Apache-2.0",
+  "private": true,
+  "engines": {
+    "node": ">=14"
+  },
+  "type": "module",
+  "main": "dist/space-data-service.js",
+  "types": "dist/space-data-service.d.ts",
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@eslint/js": "^9.11.1",
+    "@types/eslint": "^9.6.1",
+    "@types/node": "^22.7.9",
+    "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.8.1",
+    "@typescript-eslint/parser": "^8.8.1",
+    "typescript": "~5.5.3",
+    "typescript-eslint": "^8.7.0",
+    "vite": "^5.4.11",
+    "vite-plugin-dts": "^4.3.0",
+    "vite-plugin-eslint": "^1.8.1"
+  },
+  "scripts": {
+    "dev": "./node_modules/.bin/vite",
+    "build": "tsc -b && vite build",
+    "lint": "./node_modules/.bin/eslint .",
+    "preview": "./node_modules/.bin/vite preview"
+  },
+  "dependencies": {
+    "uuid": "^11.0.3"
+  }
+}
