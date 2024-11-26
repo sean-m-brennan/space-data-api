@@ -1,6 +1,6 @@
 {
   "name": "space-data-api",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "authors": [
     "Sean Brennan <sean_m_brennan@mail.com>"
   ],
@@ -16,6 +16,9 @@
   "files": [
     "dist"
   ],
+  "dependencies": {
+    "uuid": "^11.0.3"
+  },
   "devDependencies": {
     "@eslint/js": "^9.11.1",
     "@types/eslint": "^9.6.1",
@@ -30,12 +33,7 @@
     "vite-plugin-eslint": "^1.8.1"
   },
   "scripts": {
-    "dev": "./node_modules/.bin/vite",
     "build": "tsc -b && vite build",
-    "lint": "./node_modules/.bin/eslint .",
-    "preview": "./node_modules/.bin/vite preview"
-  },
-  "dependencies": {
-    "uuid": "^11.0.3"
+    "lint": "eslint \"**/*.ts\""
   }
 }

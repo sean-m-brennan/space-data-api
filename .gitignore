@@ -1,8 +1,9 @@
 /.idea/
 /src/app/kernels/
-.vercel
+.vercel/
 /node_modules/
 /dist/
 /**/__pycache__/
 **/kernels
 /*.tsbuildinfo
+.turbo/
