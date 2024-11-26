@@ -1,2 +1,3 @@
 # space-data-api
-Interface to NIAF kernel functions
+
+REST interface to NIAF kernel functions

@@ -1,3 +1,4 @@
+# from the NAIF cspice sources
 NAIF_IDS = {
 'SUN':         10,
 'MERCURY':     199,

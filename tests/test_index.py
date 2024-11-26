@@ -2,7 +2,6 @@ import json
 
 import pytest
 
-
 from app.api.index import convert_coords, fixed_to_j2k, body_position
 
 
