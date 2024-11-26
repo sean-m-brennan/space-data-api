@@ -11,10 +11,11 @@
     "node": ">=14"
   },
   "type": "module",
-  "main": "dist/space-data-service.js",
-  "types": "dist/space-data-service.d.ts",
+  "main": "space-data-service.js",
+
   "files": [
-    "dist"
+    "./space-data-service.js",
+    "./space-data-service.d.ts"
   ],
   "dependencies": {
     "uuid": "^11.0.3"
@@ -34,6 +35,9 @@
   },
   "scripts": {
     "build": "tsc -b && vite build",
-    "lint": "eslint \"src/**/*.ts\""
+    "postbuild": "cp -r ./dist/* ./",
+    "lint": "eslint \"./src/**/*.ts\"",
+    "clean": "rm -rf dist space-data-service.js space-data-service.d.ts",
+    "pristine": "npm run clean && rm -rf node_modules"
   }
 }

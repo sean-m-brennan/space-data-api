@@ -11,7 +11,7 @@ const plugins: PluginOption[] = [
     tsconfigPath: './tsconfig.app.json',
   }),
 ]
-// vite-plugin-eslint[2] is incompatible with turbo
+// vite-plugin-eslint is incompatible with turbo
 if (process.env.TURBO_HASH === undefined) {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument,@typescript-eslint/no-unsafe-call
   plugins.push(eslint())
