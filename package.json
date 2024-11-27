@@ -1,6 +1,6 @@
 {
   "name": "space-data-api",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "authors": [
     "Sean Brennan <sean_m_brennan@mail.com>"
   ],
@@ -12,7 +12,7 @@
   },
   "type": "module",
   "main": "space-data-service.js",
-
+  "types": "space-data-service.d.ts",
   "files": [
     "./space-data-service.js",
     "./space-data-service.d.ts"
@@ -34,9 +34,10 @@
     "vite-plugin-eslint": "^1.8.1"
   },
   "scripts": {
+    "prebuild": "npm install",
     "build": "tsc -b && vite build",
     "postbuild": "cp -r ./dist/* ./",
-    "lint": "eslint \"./src/**/*.ts\"",
+    "lint": "eslint \"./*.ts\"",
     "clean": "rm -rf dist space-data-service.js space-data-service.d.ts",
     "pristine": "npm run clean && rm -rf node_modules"
   }

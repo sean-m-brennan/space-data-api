@@ -21,10 +21,6 @@
     "composite": true,
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
-    "paths": {
-      "/*": ["./*"],
-    },
-    "resolveJsonModule": true,
   },
   "include": ["vite.config.ts"]
 }

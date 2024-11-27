@@ -22,13 +22,8 @@
 
     "composite": true,
     "baseUrl": ".",
-    "paths": {
-      "/*": ["./*"],
-    },
-    "resolveJsonModule": true,
   },
   "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
+    "./*.ts",
   ]
 }

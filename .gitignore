@@ -1,5 +1,5 @@
 /.idea/
-/src/app/kernels/
+/app/kernels/
 .vercel/
 /node_modules/
 /dist/

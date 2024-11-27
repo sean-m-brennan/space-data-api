@@ -3,16 +3,17 @@ import {defineConfig, PluginOption} from 'vite'
 import eslint from 'vite-plugin-eslint'
 import dts from 'vite-plugin-dts'
 import {resolve} from "path"
+import * as fs from "node:fs";
 
 const plugins: PluginOption[] = [
   dts({
     rollupTypes: true,
-    outDir: 'dist',
+    outDir: '.',
     tsconfigPath: './tsconfig.app.json',
   }),
 ]
 // vite-plugin-eslint is incompatible with turbo
-if (process.env.TURBO_HASH === undefined) {
+if (process.env.TURBO_HASH === undefined && !fs.existsSync('.turbo')) {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument,@typescript-eslint/no-unsafe-call
   plugins.push(eslint())
 }
@@ -24,7 +25,7 @@ export default defineConfig({
   base: "/space-data-api/",
   build: {
     lib: {
-      entry: resolve(__dirname, "src/space-data-service.ts"),
+      entry: resolve(__dirname, "space-data-service.ts"),
       name: "space-data-service",
       formats: ["es"],
       fileName: "space-data-service"
