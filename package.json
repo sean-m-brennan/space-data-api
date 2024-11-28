@@ -11,11 +11,13 @@
     "node": ">=14"
   },
   "type": "module",
-  "main": "space-data-service.js",
-  "types": "space-data-service.d.ts",
+  "main": "./space-data-service.cjs",
+  "module": "./space-data-service.js",
+  "types": "./space-data-service.d.ts",
   "files": [
     "./space-data-service.js",
-    "./space-data-service.d.ts"
+    "./space-data-service.d.ts",
+    "./space-data-service.cjs"
   ],
   "dependencies": {
     "uuid": "^11.0.3"
@@ -37,8 +39,8 @@
     "prebuild": "npm install",
     "build": "tsc -b && vite build",
     "postbuild": "cp -r ./dist/* ./",
-    "lint": "eslint \"./*.ts\"",
-    "clean": "rm -rf dist space-data-service.js space-data-service.d.ts",
+    "lint": "eslint \"./**/*.ts\"",
+    "clean": "rm -rf ./dist ./space-data-service.{js,cjs,d.ts}",
     "pristine": "npm run clean && rm -rf node_modules"
   }
 }

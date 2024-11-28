@@ -3,7 +3,7 @@ import {defineConfig, PluginOption} from 'vite'
 import eslint from 'vite-plugin-eslint'
 import dts from 'vite-plugin-dts'
 import {resolve} from "path"
-import * as fs from "node:fs";
+import * as fs from "node:fs"
 
 const plugins: PluginOption[] = [
   dts({
@@ -26,9 +26,8 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, "space-data-service.ts"),
-      name: "space-data-service",
-      formats: ["es"],
-      fileName: "space-data-service"
+      fileName: "space-data-service",
+      formats: ["es", "cjs"],
     },
   },
 })

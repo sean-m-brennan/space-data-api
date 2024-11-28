@@ -4,10 +4,10 @@ import tseslint from 'typescript-eslint'
 
 
 export default tseslint.config(
-    { ignores: ['dist', 'attic'] },
+    { ignores: ['dist', 'node_modules'] },
     {
         extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
-        files: ['**/*.{ts,tsx}'],
+        files: ['./**/*.{ts,tsx}'],
         languageOptions: {
             ecmaVersion: 2020,
             globals: globals.browser,
@@ -22,7 +22,7 @@ export default tseslint.config(
             },
             'import/resolver': {
                 node: {
-                    paths: ['./src'],
+                    paths: ['.'],
                     extensions: ['.js', '.jsx', '.ts', '.d.ts', '.tsx'],
                 },
                 typescript: {
