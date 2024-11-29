@@ -1,13 +1,17 @@
 import js from '@eslint/js'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
+import { glob } from 'glob'
 
+const files = glob.sync('./**/*.{ts,tsx,css}', {
+    ignore: ["./**/*.d.ts", "./**/*.config.js"]
+})
 
 export default tseslint.config(
     { ignores: ['dist', 'node_modules'] },
     {
         extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
-        files: ['./**/*.{ts,tsx}'],
+        files: files,
         languageOptions: {
             ecmaVersion: 2020,
             globals: globals.browser,

@@ -1,6 +1,6 @@
 {
   "name": "space-data-api",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "authors": [
     "Sean Brennan <sean_m_brennan@mail.com>"
   ],
@@ -40,7 +40,7 @@
     "build": "tsc -b && vite build",
     "postbuild": "cp -r ./dist/* ./",
     "lint": "eslint \"./**/*.ts\"",
-    "clean": "rm -rf ./dist ./space-data-service.{js,cjs,d.ts}",
+    "clean": "rm -rf ./dist ./space-data-service.{js,cjs,d.ts} *.mjs",
     "pristine": "npm run clean && rm -rf node_modules"
   }
 }
