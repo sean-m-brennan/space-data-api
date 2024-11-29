@@ -22,7 +22,6 @@ if (process.env.TURBO_HASH === undefined && !fs.existsSync('.turbo')) {
 export default defineConfig({
   plugins: plugins,
   root: resolve(__dirname),
-  base: "/space-data-api/",
   build: {
     lib: {
       entry: resolve(__dirname, "space-data-service.ts"),

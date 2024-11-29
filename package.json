@@ -4,7 +4,7 @@
   "authors": [
     "Sean Brennan <sean_m_brennan@mail.com>"
   ],
-  "homepage": "https://sean-m-brennan.github.io/space-data-api/",
+  "homepage": "https://github.com/sean-m-brennan/space-data-api",
   "license": "Apache-2.0",
   "private": true,
   "engines": {
@@ -33,7 +33,8 @@
     "typescript-eslint": "^8.7.0",
     "vite": "^5.4.11",
     "vite-plugin-dts": "^4.3.0",
-    "vite-plugin-eslint": "^1.8.1"
+    "vite-plugin-eslint": "^1.8.1",
+    "vite-plugin-vercel": "^9.0.3"
   },
   "scripts": {
     "prebuild": "npm install",
