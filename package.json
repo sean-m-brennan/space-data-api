@@ -14,8 +14,10 @@
   "main": "./space-data-service.cjs",
   "module": "./space-data-service.js",
   "types": "./space-data-service.d.ts",
+  "exports": "./space-data-service.js",
   "files": [
     "./space-data-service.js",
+    "./space-data-service.js.map",
     "./space-data-service.d.ts",
     "./space-data-service.cjs"
   ],

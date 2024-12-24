@@ -23,6 +23,7 @@ export default defineConfig({
   plugins: plugins,
   root: resolve(__dirname),
   build: {
+    sourcemap: true,
     lib: {
       entry: resolve(__dirname, "space-data-service.ts"),
       fileName: "space-data-service",
