@@ -2,5 +2,11 @@ requests>=2.32.3
 beautifulsoup4>=4.12.3
 numpy>=2.0.1
 spiceypy>=6.0.0
-fastapi==0.109.1
-uvicorn==0.20.0
+fastapi>=0.112.2
+apscheduler>=3.10.4
+passlib>=1.7.4
+python-multipart>=0.0.9
+pyseto==1.8.1
+apscheduler>=3.10.4
+pytz>=2024.1
+uvicorn>=0.20.0

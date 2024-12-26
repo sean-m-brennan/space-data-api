@@ -1,9 +1,8 @@
 /.idea/
-/app/kernels/
 .vercel/
 /node_modules/
 /dist/
-/**/__pycache__/
+**/__pycache__/
 **/kernels
 /*.tsbuildinfo
 .turbo/
@@ -11,3 +10,10 @@
 /space-data-service.d.ts
 /space-data-service.js
 /space-data-service.*js.map
+
+# never commit deployment-specific files
+**/.env
+/app/api/users.json
+/app/ssl.subj
+/app/cert.pem
+/app/key.pem

@@ -40,19 +40,31 @@ interface ServerResponses {
     position: [number, number, number]
 }
 
-export class SpaceData {
-    baseUrl: string
 
-    constructor(config: SpaceDataConfig) {
+export class SpaceData {
+    private readonly baseUrl: string
+    private readonly debug: boolean
+    private cachedToken: string | null
+    private expiration: number
+
+
+    constructor(config: SpaceDataConfig, debug: boolean = false) {
         const proto = config.secure ? 'https' : 'http'
         this.baseUrl = `${proto}://${config.host}:${config.port}`
+        this.debug = debug
+        this.debug = true
+        this.cachedToken = null
+        this.expiration = 0
     }
 
     async check(): Promise<SpaceData | null> {
         try {
             await fetch(`${this.baseUrl}/check`)
+            if (this.debug)
+                console.debug("Service is available")
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (_e) {
+            console.warn("Space data service is unavailable")
             return null
         }
         return this
@@ -65,6 +77,7 @@ export class SpaceData {
         console.error(err)
     }
 
+
     async dataFromServer(ident: string, url: string,
                          setData: ((data: ServerResponses) => void) | null = null,
                          isLoading: (on: boolean) => void = this.noLoading,
@@ -72,10 +85,26 @@ export class SpaceData {
         let error: unknown
         try {
             isLoading(true)
-            const response = await fetch(url)
-            // FIXME graceful degrade
+            let latest: Response | null = null
             try {
-                const json = await response.json() as ServerResponses
+                const tooClose = Date.now() - 60 * 1000
+                if (this.cachedToken === null || this.expiration <= tooClose) {
+                    const user = import.meta.env.VITE_OAUTH_USER as string
+                    const pwd = import.meta.env.VITE_OAUTH_PWD as string
+                    const data = new FormData()
+                    data.append('username', user)
+                    data.append('password', pwd)
+                    latest = await fetch(this.authUrl(), {method: 'POST', body: data})
+                    this.cachedToken = await latest.text()  // opaque
+                    if (this.debug)
+                        console.debug(this.cachedToken)
+                    this.expiration = Date.now() + 20 * 60 * 1000  // 20 minutes
+                }
+
+                console.log("Fetch")
+                // FIXME graceful degrade
+                latest = await fetch(url, {method: 'GET', headers: {'Authorization': 'Bearer ' + this.cachedToken}})
+                const json = await latest.json() as ServerResponses
                 if (json.ident !== ident) {
                     error = `Out-of-order messaging (expected ${ident} got ${json.ident}`
                     console.debug(json)
@@ -91,7 +120,7 @@ export class SpaceData {
             } catch (err) {
                 error = err
                 onError(err)
-                console.debug(response);  // FIXME remove
+                console.debug(latest);  // FIXME remove
             }
         } catch (err) {
             console.log("Handle fetch error")
@@ -114,6 +143,10 @@ export class SpaceData {
 
     currentPositionUrl(ident: string, objName: string, datetime: Date) {
         return `${this.baseUrl}/position/?ident=${ident}&body=${objName}&dt_str=${datetime.toISOString()}`
+    }
+
+    authUrl() {
+        return `${this.baseUrl}/token`
     }
 
     async fixedToJ2000(datetime: Date, lat: number, lon: number, alt: number,

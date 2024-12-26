@@ -3,10 +3,14 @@ dependencies:
   - python==3.12.*
   - numpy
   - fastapi
+  - passlib
+  - python-multipart
+  - apscheduler
   - uvicorn
   - spiceypy
   - requests
   - beautifulsoup4
   - pytest
   - pytest-asyncio
-
+  - pip:
+      -pyseto
