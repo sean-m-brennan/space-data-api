@@ -6,4 +6,4 @@ if [ ! -e app/api/users.json ]; then
 fi
 
 # Generate spice data
-PYTHONPATH=app python -m api
+PYTHONPATH=app python -m api $@

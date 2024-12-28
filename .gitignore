@@ -17,3 +17,4 @@
 /app/ssl.subj
 /app/cert.pem
 /app/key.pem
+/app/astropy/

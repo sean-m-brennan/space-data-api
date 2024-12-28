@@ -17,7 +17,6 @@
 
 import os
 import glob
-import math
 import re
 import tempfile
 from datetime import datetime
@@ -28,11 +27,13 @@ from bs4 import BeautifulSoup
 import numpy as np
 import spiceypy as spice
 
-from .naif_ids import PLANETS, SATELLITES_PLANET
-
+from .naif_ids import PLANETS, SATELLITES_PLANET, NAIF_IDS
+from .abstract_query import AbsSpaceQuery, Position, CoordRefFrame, LatLonAlt, RaDec, Vector3
 
 JGM3Re: float = 6378.137
 NAIF_WEBSITE: str = 'http://naif.jpl.nasa.gov/pub/naif/generic_kernels'
+
+#TODO fetch structure dynamically (plus file dates)
 KERNELS: dict[str, str | dict[str, str | dict[str, str]]] = {
     'lsk': 'latest_leapseconds.tls',  # time
     'tpc': 'pck00010.tpc',  # orientation
@@ -40,9 +41,10 @@ KERNELS: dict[str, str | dict[str, str | dict[str, str]]] = {
     'pck': { # planet constants
         'earth': 'earth_1962_240827_2124_combined.bpc',
         'moon': 'moon_pa_de440_200625.bpc',
+        #'masses': 'de-403-masses.tpc'
     },
     'spk': {  # planetary ephemeris
-        'planets': 'de440.bsp',
+        'planets': ['de440.bsp', 'de430.bsp'],
         'satellites': {
             'mars': 'mar097.bsp',
             'jupiter': 'jup346.bsp',
@@ -50,17 +52,23 @@ KERNELS: dict[str, str | dict[str, str | dict[str, str]]] = {
             'uranus': 'ura117.bsp',
             'neptune': 'nep104.bsp',
             'pluto': 'plu060.bsp',
-        }
+        },
+        'asteroids': 'codes_300ast_20100725.bsp'
     },
 }
 
-class SpiceQuery:
+class SpiceQuery(AbsSpaceQuery):
+    default_kernels = ['tpc', 'lsk', 'spk/asteroids']
+    kernel_cache = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')), 'kernels')
+
     def __init__(self, jit: bool = False):
+        super().__init__()
         self.just_in_time = jit
         self.kernel_dir = tempfile.gettempdir()
         if not jit:
-            self.kernel_dir = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')), 'kernels')
+            self.kernel_dir = self.kernel_cache
         self.kernels_loaded = []
+        # FIXME do download here
 
     def _clear_kernels(self):
         if not self.just_in_time:
@@ -79,11 +87,12 @@ class SpiceQuery:
             if k_name == val:
                 return 'pck'
         for key, val in KERNELS['spk'].items():
-            if k_name == val:
-                if key == 'planets':
-                    return 'spk/planets'
-                else:
-                    return 'spk/satellites'
+            if key == 'planets' and k_name in val:
+                return 'spk/planets'
+            elif key == 'asteroids' and k_name == val:
+                return 'spk/asteroids'
+            elif key == 'satellites' and k_name in val.values():
+                return 'spk/satellites'
 
     def _fetch(self, site: str, filename: str, force: bool = False):
         if not os.path.exists(self.kernel_dir):
@@ -94,8 +103,9 @@ class SpiceQuery:
             dest = os.path.join(self.kernel_dir, filename)
             if not force and os.path.exists(dest):
                 return
+            # TODO only download if newer
             urllib.request.urlretrieve(url, dest)
-        except Exception as e:
+        except Exception as _e:
             print('No url: %s' % url)
             raise
 
@@ -121,6 +131,9 @@ class SpiceQuery:
             self._fetch(NAIF_WEBSITE, val, force)
         for key, val in KERNELS['spk'].items():
             if key == 'planets':
+                for sub in val:
+                    self._fetch(NAIF_WEBSITE, sub, force)
+            elif key == 'asteroids':
                 self._fetch(NAIF_WEBSITE, val, force)
             else:
                 for _, sub_val in val.items():
@@ -150,49 +163,36 @@ class SpiceQuery:
                     filename = filename[key]
                 spice.furnsh(os.path.join(self.kernel_dir, filename))
 
-    @staticmethod
-    def _spherical_to_cartesian(theta: float, phi: float, R: float) -> list[float]:
-        x = R * math.cos(phi) * math.cos(theta)
-        y = R * math.cos(phi) * math.sin(theta)
-        z = R * math.sin(phi)
-        return [x, y, z]
-
-    def transform_coordinates(self, position: np.array, original: str, new: str, dt: datetime, init: bool = True) -> list[float]:
+    def transform_coordinates(self, position: Position, original: str, new: str, dt: datetime) -> Position:
+        orig_frame = self._validate_frame(original)
+        new_frame = self._validate_frame(new)
+        pos_arr = position.to_list()
         k_list = ['lsk', 'tf', 'pck/earth']
-        if init:
-            self._init_kernels(k_list)
+        self._init_kernels(k_list)
         dt_str = dt.strftime('%Y-%m-%d %H:%M:%S UTC')
         et = spice.str2et(dt_str)
-        converter = spice.pxform(original, new, et)
-        if init:
-            self._clear_kernels()
-        return np.dot(converter, position).tolist()
-
-    def fixed_to_j2000(self, lat: float, lon: float, alt: float, dt: datetime) -> list[float]:
-        k_list = ['lsk', 'tpc']
-        self._init_kernels(k_list)
-        lat_rad = lat * np.pi / 180.
-        lon_rad = lon * np.pi / 180.
-        earth_body = 399
-        _, radii = spice.bodvcd(earth_body, 'RADII', 3)
-        equator = float(radii[0])
-        polar = float(radii[2])
-        f = (equator - polar) / equator
-        epos = spice.georec(lon_rad, lat_rad, alt, equator, f)
-        coords = self.transform_coordinates(epos, 'IAU_EARTH', 'J2000', dt, init=False)
+        converter = spice.pxform(orig_frame.value, new_frame.value, et)
         self._clear_kernels()
-        return coords  # cartesian
+        new_arr = np.dot(converter, pos_arr).tolist()
+        if new_frame == CoordRefFrame.ITRF:
+            return LatLonAlt(*new_arr)
+        return RaDec(*new_arr)
 
-    def celestial_position(self, body: str, dt: datetime)-> list[float]:
+    def celestial_position(self, body: str, dt: datetime)-> Vector3:
+        if body.upper() not in NAIF_IDS:
+            raise RuntimeError('Invalid celestial body: %s' % body)
         k_list = ['lsk', 'tpc']
         if body.upper() in PLANETS:
             k_list.append('spk/planets')
         elif body.upper() in SATELLITES_PLANET.keys():
+            k_list.append('spk/planets')
             k_list.append('spk/satellites/' + SATELLITES_PLANET[body.upper()])
         self._init_kernels(k_list)
         dt_str = dt.strftime('%Y-%m-%d %H:%M:%S UTC')
         et = spice.str2et(dt_str)
-        position, _ = spice.spkpos(body.upper(), et, 'J2000', 'NONE', 'EARTH')
+        try:
+            position, _ = spice.spkpos(body.upper(), et, 'ECLIPJ2000', 'NONE', 'EARTH')
+        except spice.exceptions.SpiceyError as err:
+            raise RuntimeError("Kernels loaded: %s" % str(k_list)) from err
         self._clear_kernels()
-        return position.tolist()
-
+        return self._spherical_to_cartesian(position)

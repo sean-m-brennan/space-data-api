@@ -1,16 +1,24 @@
 name: space_data_api
+channels:
+  - conda-forge
 dependencies:
   - python==3.12.*
+  - astropy
+  - jplephem
+  - spiceypy
   - numpy
+  - pint
   - fastapi
   - passlib
+  - openssl
   - python-multipart
   - apscheduler
+  - pytz
   - uvicorn
-  - spiceypy
   - requests
   - beautifulsoup4
   - pytest
   - pytest-asyncio
+  - pip
   - pip:
-      -pyseto
+    - pyseto

@@ -12,7 +12,18 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import sys
+from typing import Optional
+
 from .spice_converter import SpiceQuery
 
+
+def main(argv: Optional[list[str]]=None) -> None:
+    if argv is None:
+        argv = sys.argv
+    force = len(argv) > 1 and argv[1] == '--force'
+    SpiceQuery().download(force=force)
+
+
 if __name__ == '__main__':
-    SpiceQuery().download()
+    main()

@@ -52,7 +52,7 @@ export class SpaceData {
         const proto = config.secure ? 'https' : 'http'
         this.baseUrl = `${proto}://${config.host}:${config.port}`
         this.debug = debug
-        this.debug = true
+        this.debug = true  // FIXME remove
         this.cachedToken = null
         this.expiration = 0
     }
@@ -113,6 +113,8 @@ export class SpaceData {
                     error = json.error
                     onError(json.error)
                 } else {
+                    console.log("Data")
+                    console.log(json)
                     if (setData)
                         setData(json)
                     return json

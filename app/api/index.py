@@ -24,7 +24,7 @@ from http.client import HTTPException
 from typing import Optional
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from starlette.responses import HTMLResponse
@@ -33,11 +33,14 @@ import pyseto
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import utc
 
-from .spice_converter import SpiceQuery
+from .space_query import SpaceQuery
+from .abstract_query import Vector3, LatLonAlt
 
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 app_dir = os.path.dirname(this_dir)
+
+sq = SpaceQuery.get_impl('astro') # 'spice')
 
 def get_key():
     key_num_bytes = 32
@@ -45,7 +48,6 @@ def get_key():
 
 secret_key = get_key()
 logger = logging.getLogger('uvicorn.error')
-spice = SpiceQuery(jit=True)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 crypto_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 scheduler = AsyncIOScheduler(timezone=utc)
@@ -71,7 +73,7 @@ def authenticate(payload: bytes = Depends(oauth2_scheme)):
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     scheduler.start()
     yield
     scheduler.shutdown()
@@ -125,22 +127,33 @@ async def check_connection():
 async def convert_coords(ident: str, coords: str, original: str, new: str, dt_str: str):
     authenticate()
     try:
+        # FIXME validate original and new
         if original.upper() not in ['ITRF93', 'J2000'] or new.upper() not in ['ITRF93', 'J2000']:
             return {'ident': ident, 'error': 'Unsupported conversion %s => %s' % (original, new)}
         position = json.loads(coords)
         dt = datetime.fromisoformat(dt_str)
-        coords = spice.transform_coordinates(position, original.upper(), new.upper(), dt)
+        coords = sq.transform_coordinates(position, original.upper(), new.upper(), dt)
         return {'ident': ident, 'coordinates': coords}
     except Exception as e:
         logger.error(traceback.format_exc())
         return {'ident': ident, 'error': str(e)}
 
 
-@app.get("/fixed2j2k/", dependencies=[Depends(authenticate)])
-async def fixed_to_j2k(ident: str, lat: float, lon: float, alt: float, dt_str: str):
+@app.get("/terr2cele/", dependencies=[Depends(authenticate)])
+async def terr2cele(ident: str, lat: float, lon: float, alt: float, dt_str: str):
     try:
         dt = datetime.fromisoformat(dt_str)
-        coords = spice.fixed_to_j2000(lat, lon, alt, dt)
+        coords = sq.terrestrial_to_celestial(LatLonAlt(lat, lon, alt), dt)
+        return {'ident': ident, 'coordinates': coords}
+    except Exception as e:
+        logger.error(traceback.format_exc())
+        return {'ident': ident, 'error': str(e)}
+
+@app.get("/cele2terr/", dependencies=[Depends(authenticate)])
+async def cele2terr(ident: str, x: float, y: float, z: float, dt_str: str):
+    try:
+        dt = datetime.fromisoformat(dt_str)
+        coords = sq.celestial_to_terrestrial(Vector3(x, y, z), dt)
         return {'ident': ident, 'coordinates': coords}
     except Exception as e:
         logger.error(traceback.format_exc())
@@ -151,10 +164,7 @@ async def fixed_to_j2k(ident: str, lat: float, lon: float, alt: float, dt_str: s
 async def body_position(ident: str, body: str, dt_str: str):
     try:
         dt = datetime.fromisoformat(dt_str)
-        #if body.lower() == 'sun':
-        #    coords = sun_position(dt)
-        #else:
-        coords = spice.celestial_position(body, dt)
+        coords = sq.celestial_position(body, dt)
         return {'ident': ident, 'position': coords}
     except Exception as e:
         logger.error(traceback.format_exc())
