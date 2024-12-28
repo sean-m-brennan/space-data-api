@@ -34,8 +34,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import utc
 
 from .space_query import SpaceQuery
-from .abstract_query import Vector3, LatLonAlt
-
+from .abstract_query import Vector3, LatLonAlt, u
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 app_dir = os.path.dirname(this_dir)
@@ -143,7 +142,7 @@ async def convert_coords(ident: str, coords: str, original: str, new: str, dt_st
 async def terr2cele(ident: str, lat: float, lon: float, alt: float, dt_str: str):
     try:
         dt = datetime.fromisoformat(dt_str)
-        coords = sq.terrestrial_to_celestial(LatLonAlt(lat, lon, alt), dt)
+        coords = sq.terrestrial_to_celestial(LatLonAlt(lat * u.degrees, lon * u.degrees, alt * u.m), dt)
         return {'ident': ident, 'coordinates': coords}
     except Exception as e:
         logger.error(traceback.format_exc())
@@ -153,7 +152,7 @@ async def terr2cele(ident: str, lat: float, lon: float, alt: float, dt_str: str)
 async def cele2terr(ident: str, x: float, y: float, z: float, dt_str: str):
     try:
         dt = datetime.fromisoformat(dt_str)
-        coords = sq.celestial_to_terrestrial(Vector3(x, y, z), dt)
+        coords = sq.celestial_to_terrestrial(Vector3(x * u.km, y * u.km, z * u.km), dt)
         return {'ident': ident, 'coordinates': coords}
     except Exception as e:
         logger.error(traceback.format_exc())

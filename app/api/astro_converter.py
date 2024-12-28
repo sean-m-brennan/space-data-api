@@ -2,12 +2,12 @@ import os
 from datetime import datetime
 
 from astropy import coordinates
-from astropy.coordinates import SkyCoord, WGS84GeodeticRepresentation, solar_system_ephemeris
+from astropy.coordinates import SkyCoord, solar_system_ephemeris
 from astropy.time import Time
-from astropy.units import Quantity
+from astropy.units import Quantity, dimensionless_unscaled
 
-from .abstract_query import AbsSpaceQuery, Position, CoordRefFrame, LatLonAlt, RaDec, Vector3, ureg
-from.naif_ids import NAIF_IDS
+from .abstract_query import AbsSpaceQuery, Position, CoordRefFrame, LatLonAlt, RaDec, Vector3, u
+from .naif_ids import NAIF_IDS
 
 
 class AstroQuery(AbsSpaceQuery):
@@ -15,31 +15,50 @@ class AstroQuery(AbsSpaceQuery):
 
     def __init__(self, _jit: bool = False):
         super().__init__()
-        solar_system_ephemeris.set('jpl')
         solar_system_ephemeris.set(os.path.join(self.kernel_cache, 'de430.bsp'))
 
     @classmethod
     def astro_quant_to_pint(cls, quant: Quantity):
-        return ureg.Quantity(quant.value, quant.unit.name)
+        try:
+            units = quant.units  # actually, it's pint
+        except AttributeError:
+            units = quant.unit.to_string()
+        return u.Quantity(quant.value, units)
 
     @classmethod
     def crf_to_astro_repr(cls, crf: CoordRefFrame) -> str:
+        if crf == CoordRefFrame.ITRF:
+            return 'itrs'
+        if crf == CoordRefFrame.ICRF:
+            return 'icrs'
+        if crf == CoordRefFrame.ECLIPJ2K:
+            return 'gcrs'
         return crf.value
 
     def transform_coordinates(self, position: Position, original: str, new: str, dt: datetime) -> Position:
         orig_frame = self.crf_to_astro_repr(self._validate_frame(original))
         new = self._validate_frame(new)
         new_frame = self.crf_to_astro_repr(new)
-        sc = SkyCoord(*(position.to_list()[:2]), frame=orig_frame, unit='deg')
+        pos = position.from_center()
+        unit = pos[2].units
+        sc = SkyCoord(*pos, frame=orig_frame)
         xform = sc.transform_to(new_frame)
         if new == CoordRefFrame.ITRF:
-            return LatLonAlt(xform.lat, xform.lon, xform.height)
-        return RaDec(xform.ra, xform.dec, xform.height)
+            height = xform.height
+            if xform.height.unit == dimensionless_unscaled:
+                height *= unit
+            lla = list(map(self.astro_quant_to_pint, [xform.lat, xform.lon, height]))
+            return LatLonAlt(*lla)
+
+        distance = xform.distance
+        if xform.distance.unit == dimensionless_unscaled:
+            distance *= unit
+        dec_ra_dist = list(map(self.astro_quant_to_pint, [xform.dec, xform.ra, distance]))
+        return RaDec(*dec_ra_dist)
 
     def celestial_position(self, body: str, dt: datetime)-> Vector3:
         if body.upper() not in NAIF_IDS:
             raise RuntimeError('Invalid celestial body: %s' % body)
-        # FIXME convert dt
         if body.upper() == 'SUN':
             sc = coordinates.get_sun(Time(dt))
         else:

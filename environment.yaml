@@ -21,4 +21,5 @@ dependencies:
   - pytest-asyncio
   - pip
   - pip:
-    - pyseto
+      - libpass
+      - pyseto

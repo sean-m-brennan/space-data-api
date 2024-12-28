@@ -14,11 +14,12 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 import math
+
 try:
     from typing import Type, TypeVar
 except ImportError:
@@ -26,16 +27,29 @@ except ImportError:
 
 import pint
 
-ureg = pint.UnitRegistry()
-Quant = ureg.Quantity
+u = pint.UnitRegistry()
+Quant = u.Quantity
+
+earth_radius = 6371.
+
+class Point(ABC):
+    @abstractmethod
+    def to_list(self):
+        pass
+
+    def from_center(self):
+        return self.to_list()
 
 
 @dataclass
-class Vector3:
+class Vector3(Point):
     """ Generic three-dimensional vector, with length units """
     x: Quant  # length
     y: Quant  # length
     z: Quant  # length
+
+    def to_list(self):
+        return [self.x, self.y, self.z]
 
 
 @dataclass
@@ -46,7 +60,7 @@ class Matrix3:
 
 
 @dataclass
-class RaDec:
+class RaDec(Point):
     """ Right Ascension/Declination in decimal degrees, with Altitude """
     dec: Quant  # degree
     ra: Quant  # degree
@@ -57,7 +71,7 @@ class RaDec:
 
 
 @dataclass
-class LatLonAlt:
+class LatLonAlt(Point):
     """ Longitude/Latitude/Altitude in decimal degrees """
     lat: Quant  # degree
     lon: Quant  # degree
@@ -66,14 +80,16 @@ class LatLonAlt:
     def to_list(self):
         return [self.lat, self.lon, self.alt]
 
+    def from_center(self):
+        return [self.lat, self.lon, self.alt + (earth_radius * u.km)]
+
 
 Position = Vector3 | RaDec | LatLonAlt
 
 
 class CoordRefFrame(str, Enum):
     """ Supported reference frames"""
-    ICRS = 'J2000'           # celestial, equatorial, Earth-centered - Ra/Dec
-    GCRS = 'GCRS'            # ??
+    ICRF = 'J2000'           # celestial, equatorial, Earth-centered - Ra/Dec
     ECLIPJ2K = 'ECLIPJ2000'  # celestial, ecliptic, Earth-centered - LatLon
     ITRF = 'ITRF93'          # terrestrial, equatorial, fixed - LatLon
     IAU_SUN = 'IAU_SUN'
@@ -83,8 +99,8 @@ class CoordRefFrame(str, Enum):
     @staticmethod
     def aliases():
         forward = {
-            CoordRefFrame.ICRS: ['ICRS', 'ICRF', 'EME2000', 'EME2K', 'J2000', 'J2K', 'ECI'],
-            CoordRefFrame.ECLIPJ2K: ['ECLIPJ2000',],
+            CoordRefFrame.ICRF: ['ICRS', 'ICRF', 'EME2000', 'EME2K', 'J2000', 'J2K', 'ECI'],
+            CoordRefFrame.ECLIPJ2K: ['ECLIPJ2000', "GCRS"],
             CoordRefFrame.ITRF: ['ITRF', 'ITRF93', 'IAU_EARTH', 'ECEF'],
             CoordRefFrame.IAU_SUN: ['IAU_SUN'],
             CoordRefFrame.IAU_MOON: ['IAU_MOON'],
@@ -168,5 +184,5 @@ class AbsSpaceQuery:
             rho = rho - 2 * math.pi
         elif rho < -2 * math.pi:
             rho = rho + 2 * math.pi
-        phi, rho = map(lambda n: n * (180. / math.pi) * ureg.degrees, [phi, rho])
+        phi, rho = map(lambda n: n * (180. / math.pi) * u.degrees, [phi, rho])
         return klass(phi, rho, dist * unit)

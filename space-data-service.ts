@@ -140,7 +140,7 @@ export class SpaceData {
     }
 
     llaToJ2000Url(ident: string, lat: number, lon: number, alt: number, datetime: Date) {
-        return `${this.baseUrl}/fixed2j2k/?ident=${ident}&lat=${lat}&lon=${lon}&alt=${alt}&dt_str=${datetime.toISOString()}`
+        return `${this.baseUrl}/terr2cele/?ident=${ident}&lat=${lat}&lon=${lon}&alt=${alt}&dt_str=${datetime.toISOString()}`
     }
 
     currentPositionUrl(ident: string, objName: string, datetime: Date) {
