@@ -34,7 +34,11 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import utc
 
 from .space_query import SpaceQuery
-from .abstract_query import Vector3, LatLonAlt, u
+from .abstract_query import Vector3, LatLonAlt, u, CoordRefFrame
+from .iface_types import (AuthReq, ConversionReq, T2CConversionReq, C2TConversionReq, PositionReq,
+                          AuthToken, ConversionResp, PositionResp, ErrorResp, CartesianCoords, SphericalCoords,
+                          transfer_coords, ConversionOrErrorResp, PositionOrErrorResp)
+
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 app_dir = os.path.dirname(this_dir)
@@ -92,7 +96,7 @@ ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 ssl_context.load_cert_chain(os.path.join(app_dir, 'cert.pem'), keyfile=os.path.join(app_dir, 'key.pem'))
 
 
-@app.get('/login')
+@app.get('/login', name='')
 async def login():  # OAuth2 password flow
     html = '''
         <form method="POST" action="/token">
@@ -106,68 +110,62 @@ async def login():  # OAuth2 password flow
     return HTMLResponse(html)
 
 
-@app.post("/token")
-async def auth(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+@app.post("/token", name='')
+async def auth(form_data: AuthReq) -> AuthToken:
     pwd_hash = users_db.get(form_data.username)
     if not pwd_hash:
         raise HTTPException(status_code=403, detail='Invalid credentials')
     if not crypto_context.verify(form_data.password, pwd_hash):
         raise HTTPException(status_code=403, detail='Invalid credentials')
     token = new_token({'user': form_data.username})
-    return {"access_token": token, "token_type": "bearer"}
+    return AuthToken(access_token=token, token_type="bearer")
 
 
-@app.get("/check")
-async def check_connection():
-    return {}
+@app.get("/check", name='')
+async def check_connection() -> None:
+    return
 
 
-@app.get("/convert/", dependencies=[Depends(authenticate)])
-async def convert_coords(ident: str, coords: str, original: str, new: str, dt_str: str):
-    authenticate()
+@app.post("/convert/", name='', dependencies=[Depends(authenticate)])
+async def convert_coords(conv: ConversionReq) -> ConversionOrErrorResp:
     try:
-        # FIXME validate original and new
-        if original.upper() not in ['ITRF93', 'J2000'] or new.upper() not in ['ITRF93', 'J2000']:
-            return {'ident': ident, 'error': 'Unsupported conversion %s => %s' % (original, new)}
-        position = json.loads(coords)
-        dt = datetime.fromisoformat(dt_str)
-        coords = sq.transform_coordinates(position, original.upper(), new.upper(), dt)
-        return {'ident': ident, 'coordinates': coords}
+        if conv.original not in CoordRefFrame.aliases() or conv.new not in CoordRefFrame.aliases():
+            return ErrorResp(ident=conv.ident, error='Unsupported conversion %s => %s' % (conv.original, conv.new))
+        result = sq.transform_coordinates(transfer_coords(conv.coords), conv.original, conv.new, conv.dt)
+        return ConversionResp(ident=conv.ident, coordinates=transfer_coords(result))
     except Exception as e:
         logger.error(traceback.format_exc())
-        return {'ident': ident, 'error': str(e)}
+        return ErrorResp(ident=conv.ident, error=str(e))
 
 
-@app.get("/terr2cele/", dependencies=[Depends(authenticate)])
-async def terr2cele(ident: str, lat: float, lon: float, alt: float, dt_str: str):
+@app.post("/terrestrial2celestial/", name='', dependencies=[Depends(authenticate)])
+async def terr2cele(conv: T2CConversionReq) -> ConversionOrErrorResp:
     try:
-        dt = datetime.fromisoformat(dt_str)
-        coords = sq.terrestrial_to_celestial(LatLonAlt(lat * u.degrees, lon * u.degrees, alt * u.m), dt)
-        return {'ident': ident, 'coordinates': coords}
+        result = sq.terrestrial_to_celestial(conv.coords.to_lla(), conv.dt)
+        return ConversionResp(ident=conv.ident, coordinates=CartesianCoords.from_vector(result))
     except Exception as e:
         logger.error(traceback.format_exc())
-        return {'ident': ident, 'error': str(e)}
+        return ErrorResp(ident=conv.ident, error=str(e))
 
-@app.get("/cele2terr/", dependencies=[Depends(authenticate)])
-async def cele2terr(ident: str, x: float, y: float, z: float, dt_str: str):
+
+@app.post("/celestial2terrestrial/", name='', dependencies=[Depends(authenticate)])
+async def cele2terr(conv: C2TConversionReq) -> ConversionOrErrorResp:
     try:
-        dt = datetime.fromisoformat(dt_str)
-        coords = sq.celestial_to_terrestrial(Vector3(x * u.km, y * u.km, z * u.km), dt)
-        return {'ident': ident, 'coordinates': coords}
+        result = sq.celestial_to_terrestrial(conv.coords.to_vector(), conv.dt)
+        return ConversionResp(ident=conv.ident, coordinates=SphericalCoords.from_lla(result))
     except Exception as e:
         logger.error(traceback.format_exc())
-        return {'ident': ident, 'error': str(e)}
+        return ErrorResp(ident=conv.ident, error=str(e))
 
 
-@app.get("/position/", dependencies=[Depends(authenticate)])
-async def body_position(ident: str, body: str, dt_str: str):
+@app.post("/position/", name='', dependencies=[Depends(authenticate)])
+async def body_position(obtain: PositionReq) -> PositionOrErrorResp:
     try:
-        dt = datetime.fromisoformat(dt_str)
-        coords = sq.celestial_position(body, dt)
-        return {'ident': ident, 'position': coords}
+        result = sq.celestial_position(obtain.body, obtain.dt)
+        return PositionResp(ident=obtain.ident, position=CartesianCoords.from_vector(result))
     except Exception as e:
         logger.error(traceback.format_exc())
-        return {'ident': ident, 'error': str(e)}
+        return ErrorResp(ident=obtain.ident, error=str(e))
 
 
 @scheduler.scheduled_job('cron', hour=0, minute=30)

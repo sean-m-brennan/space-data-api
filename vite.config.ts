@@ -8,7 +8,7 @@ import * as fs from "node:fs"
 const plugins: PluginOption[] = [
   dts({
     rollupTypes: true,
-    outDir: '.',
+    outDir: 'dist',
     tsconfigPath: './tsconfig.app.json',
   }),
 ]
@@ -25,8 +25,9 @@ export default defineConfig({
   build: {
     sourcemap: true,
     lib: {
-      entry: resolve(__dirname, "space-data-service.ts"),
-      fileName: "space-data-service",
+      entry: resolve(__dirname, "index.ts"),
+      name: "space-data-service",
+      fileName: "index",
       formats: ["es", "cjs"],
     },
   },

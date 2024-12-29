@@ -20,6 +20,8 @@ from datetime import datetime
 from enum import Enum
 import math
 
+from astropy.visualization.wcsaxes import SphericalCircle
+
 try:
     from typing import Type, TypeVar
 except ImportError:
@@ -64,10 +66,10 @@ class RaDec(Point):
     """ Right Ascension/Declination in decimal degrees, with Altitude """
     dec: Quant  # degree
     ra: Quant  # degree
-    alt: Quant  # length
+    dist: Quant  # length
 
     def to_list(self):
-        return [self.dec, self.ra, self.alt]
+        return [self.dec, self.ra, self.dist]
 
 
 @dataclass

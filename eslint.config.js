@@ -3,12 +3,10 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 import { glob } from 'glob'
 
-const files = glob.sync('./**/*.{ts,tsx,css}', {
-    ignore: ["./**/*.d.ts", "./**/*.config.js"]
-})
+const files = glob.sync('./**/*.{ts,tsx,css}', {ignore: ["./**/*.d.ts"]})
 
 export default tseslint.config(
-    { ignores: ['dist', 'node_modules'] },
+    { ignores: ['dist', 'node_modules', '.turbo'] },
     {
         extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
         files: files,

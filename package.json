@@ -11,21 +11,22 @@
     "node": ">=14"
   },
   "type": "module",
-  "main": "./space-data-service.cjs",
-  "module": "./space-data-service.js",
-  "types": "./space-data-service.d.ts",
-  "exports": "./space-data-service.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": "./index.js",
   "files": [
-    "./space-data-service.js",
-    "./space-data-service.js.map",
-    "./space-data-service.d.ts",
-    "./space-data-service.cjs"
+    "./index.js",
+    "./index.js.map",
+    "./index.d.ts",
+    "./index.cjs"
   ],
   "dependencies": {
+    "@hey-api/client-fetch": "^0.5.7",
     "uuid": "^11.0.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.11.1",
+    "@hey-api/openapi-ts": "^0.60.1",
     "@types/eslint": "^9.6.1",
     "@types/node": "^22.7.9",
     "@types/uuid": "^10.0.0",
@@ -41,9 +42,12 @@
   "scripts": {
     "prebuild": "npm install",
     "build": "tsc -b && vite build",
-    "postbuild": "cp -r ./dist/* ./",
+    "generate-client": "openapi-ts --input http://localhost:8000/openapi.json --output ./lib/client --client @hey-api/client-fetch",
+    "prepublish": "npm run build && cp -r ./dist/* ./",
+    "publish": "npm publish",
+    "postpublish": "rm -f ./index.js ./index.*.map ./index.cjs ./index.d.ts",
     "lint": "eslint \"./**/*.ts\"",
-    "clean": "rm -rf ./dist ./space-data-service.*js ./space-data-service.*map ./space-data-service.d.ts",
+    "clean": "rm -rf ./dist",
     "pristine": "npm run clean && rm -rf node_modules"
   }
 }

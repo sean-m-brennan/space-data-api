@@ -18,3 +18,4 @@
 /app/cert.pem
 /app/key.pem
 /app/astropy/
+/lib/client/
