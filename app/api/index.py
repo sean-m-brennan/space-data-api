@@ -45,6 +45,7 @@ app_dir = os.path.dirname(this_dir)
 
 sq = SpaceQuery.get_impl('astro') # 'spice')
 
+
 def get_key():
     key_num_bytes = 32
     return pyseto.Key.new(version=4, purpose="local", key=secrets.token_bytes(key_num_bytes))
