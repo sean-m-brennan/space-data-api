@@ -34,7 +34,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import utc
 
 from .space_query import SpaceQuery
-from .abstract_query import Vector3, LatLonAlt, u, CoordRefFrame
+from .abstract_query import Vector3, LatLonAlt, RaDec, u, CoordRefFrame
 from .iface_types import (AuthReq, ConversionReq, T2CConversionReq, C2TConversionReq, PositionReq,
                           AuthToken, ConversionResp, PositionResp, ErrorResp, CartesianCoords, SphericalCoords,
                           transfer_coords, ConversionOrErrorResp, PositionOrErrorResp)
@@ -132,7 +132,11 @@ async def convert_coords(conv: ConversionReq) -> ConversionOrErrorResp:
     try:
         if conv.original not in CoordRefFrame.aliases() or conv.new not in CoordRefFrame.aliases():
             return ErrorResp(ident=conv.ident, error='Unsupported conversion %s => %s' % (conv.original, conv.new))
-        result = sq.transform_coordinates(transfer_coords(conv.coords), conv.original, conv.new, conv.dt)
+        # A spherical payload is ambiguous on its own: in a celestial frame it is RA/Dec,
+        # in a terrestrial frame lat/lon/alt. Pick the interpretation from the SOURCE frame
+        # so a celestial RA/Dec is not mistaken for a ground point (which would add earth_radius).
+        in_klass = RaDec if conv.original in (CoordRefFrame.ICRF, CoordRefFrame.ECLIPJ2K) else LatLonAlt
+        result = sq.transform_coordinates(transfer_coords(conv.coords, in_klass), conv.original, conv.new, conv.dt)
         return ConversionResp(ident=conv.ident, coordinates=transfer_coords(result))
     except Exception as e:
         logger.error(traceback.format_exc())

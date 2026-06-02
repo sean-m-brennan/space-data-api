@@ -11,6 +11,8 @@
 /space-data-service.js
 /space-data-service.*js.map
 
+/space-data-api-*.tgz
+
 # never commit deployment-specific files
 **/.env
 /app/api/users.json

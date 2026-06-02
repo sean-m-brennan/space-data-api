@@ -83,6 +83,21 @@ async def test_convert_cartesian_rotation_preserves_norm():
 
 
 @pytest.mark.asyncio
+async def test_convert_spherical_celestial_treated_as_radec():
+    # A spherical payload in a CELESTIAL frame is RA/Dec, not terrestrial lat/lon — so an
+    # identity-frame convert must preserve the radial distance (a terrestrial reading would
+    # wrongly add earth_radius).
+    coords = SphericalCoords(lat=20.0, lon=80.0, alt=100000.0, units='km')  # dec, ra, dist
+    resp = await convert_coords(
+        ConversionReq(ident='sph', coords=coords, original='J2000', new='J2000', dt=DT))
+    out = resp.coordinates
+    assert out.coord_type == 'spherical'
+    assert math.isclose(out.alt, 100000.0, rel_tol=1e-9)        # not 100000 + 6371
+    assert math.isclose(out.lat, 20.0, abs_tol=1e-6)
+    assert math.isclose(((out.lon - 80.0 + 180) % 360) - 180, 0.0, abs_tol=1e-6)
+
+
+@pytest.mark.asyncio
 async def test_terrestrial_celestial_round_trip():
     lat, lon, alt = 35.2, 106.3, 7000.0
     fwd = await terr2cele(
