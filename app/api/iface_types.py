@@ -2,7 +2,7 @@ from typing import Annotated, Union, Literal
 
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, AwareDatetime, Field
+from pydantic import BaseModel, AwareDatetime, Field, ConfigDict
 
 from .abstract_query import Vector3, LatLonAlt, RaDec, u, CoordRefFrame, Position
 
@@ -14,8 +14,7 @@ class CartesianCoords(BaseModel):
     z: float
     units: str
 
-    class Config:
-        extra = 'forbid'
+    model_config = ConfigDict(extra='forbid')
 
     def to_vector(self):
         return Vector3(self.x * u(self.units), self.y * u(self.units), self.z * u(self.units))
@@ -33,8 +32,7 @@ class SphericalCoords(BaseModel):
     alt: float
     units: str
 
-    class Config:
-        extra = 'forbid'
+    model_config = ConfigDict(extra='forbid')
 
     def to_lla(self):
         return LatLonAlt(lat=self.lat * u.degrees, lon=self.lon * u.degrees, alt=self.alt * u(self.units))

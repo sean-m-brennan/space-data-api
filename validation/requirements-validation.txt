@@ -1,0 +1,14 @@
+# Dependencies for the ephemeris validation harness (generate_ephemeris_truth.py).
+#
+# These mirror the conda-only environment.yaml so the generator can run in a plain
+# venv. Importing the shipped backends pulls in:
+#   - astropy + jplephem + pint  -> api.astro_converter / api.abstract_query
+#   - spiceypy + requests + bs4   -> api.spice_converter
+# numpy is a shared transitive dependency.
+astropy>=6.0
+jplephem>=2.21
+pint>=0.23
+spiceypy>=6.0.0
+numpy>=2.0.1
+requests>=2.32.3
+beautifulsoup4>=4.12.3

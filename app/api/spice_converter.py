@@ -28,7 +28,7 @@ import numpy as np
 import spiceypy as spice
 
 from .naif_ids import PLANETS, SATELLITES_PLANET, NAIF_IDS
-from .abstract_query import AbsSpaceQuery, Position, CoordRefFrame, LatLonAlt, RaDec, Vector3
+from .abstract_query import AbsSpaceQuery, Position, CoordRefFrame, LatLonAlt, RaDec, Vector3, u
 
 JGM3Re: float = 6378.137
 NAIF_WEBSITE: str = 'http://naif.jpl.nasa.gov/pub/naif/generic_kernels'
@@ -140,33 +140,48 @@ class SpiceQuery(AbsSpaceQuery):
                     self._fetch(NAIF_WEBSITE, sub_val, force)
         print('... complete')
 
+    @staticmethod
+    def _resolve_kernels(k_id: str) -> list[str]:
+        """Resolve a slash-path key into the kernel filename(s) it points at.
+
+        Some entries (e.g. 'spk/planets') map to a *list* of kernels rather than a
+        single filename; always return a list so callers can furnish each one.
+        """
+        node = KERNELS
+        for key in k_id.split('/'):
+            node = node[key]
+        return node if isinstance(node, list) else [node]
+
     def _init_kernels(self, k_list: list[str]):
         if self.just_in_time:
             for k_id in k_list:
-                filename = KERNELS
-                for key in k_id.split('/'):
-                    filename = filename[key]
-                if filename in self.kernels_loaded:
-                    continue
-                # not using async because space is the tighter constraint
-                self._fetch(NAIF_WEBSITE, filename)
-                spice.furnsh(os.path.join(self.kernel_dir, filename))
-                self.kernels_loaded.append(filename)
-                os.remove(os.path.join(self.kernel_dir, filename))
+                for filename in self._resolve_kernels(k_id):
+                    if filename in self.kernels_loaded:
+                        continue
+                    # not using async because space is the tighter constraint
+                    self._fetch(NAIF_WEBSITE, filename)
+                    spice.furnsh(os.path.join(self.kernel_dir, filename))
+                    self.kernels_loaded.append(filename)
+                    os.remove(os.path.join(self.kernel_dir, filename))
         else:
             if not os.path.exists(self.kernel_dir) or \
                     len(glob.glob(os.path.join(self.kernel_dir, '*.bpc'))) == 0:
                 self.download()
             for k_id in k_list:
-                filename = KERNELS
-                for key in k_id.split('/'):
-                    filename = filename[key]
-                spice.furnsh(os.path.join(self.kernel_dir, filename))
+                for filename in self._resolve_kernels(k_id):
+                    spice.furnsh(os.path.join(self.kernel_dir, filename))
 
     def transform_coordinates(self, position: Position, original: str, new: str, dt: datetime) -> Position:
         orig_frame = self._validate_frame(original)
         new_frame = self._validate_frame(new)
-        pos_arr = position.to_list()
+        # The frame change is a pure rotation of a CARTESIAN vector. Reduce any polar input
+        # to cartesian first, rotate, then return in the SAME form as the input (a polar
+        # input yields a polar result in the representation natural to the target frame:
+        # terrestrial -> LatLonAlt, celestial -> RaDec).
+        is_polar = not isinstance(position, Vector3)
+        cart = self._spherical_to_cartesian(position) if is_polar else position
+        unit = cart.z.units
+        pos_arr = [cart.x.magnitude, cart.y.magnitude, cart.z.magnitude]
         k_list = ['lsk', 'tf', 'pck/earth']
         self._init_kernels(k_list)
         dt_str = dt.strftime('%Y-%m-%d %H:%M:%S UTC')
@@ -174,19 +189,30 @@ class SpiceQuery(AbsSpaceQuery):
         converter = spice.pxform(orig_frame.value, new_frame.value, et)
         self._clear_kernels()
         new_arr = np.dot(converter, pos_arr).tolist()
-        if new_frame == CoordRefFrame.ITRF:
-            return LatLonAlt(*new_arr)
-        return RaDec(*new_arr)
+        rotated = Vector3(new_arr[0] * unit, new_arr[1] * unit, new_arr[2] * unit)
+        if not is_polar:
+            return rotated
+        klass = LatLonAlt if new_frame == CoordRefFrame.ITRF else RaDec
+        return self._cartesian_to_polar(rotated, klass)
 
     def celestial_position(self, body: str, dt: datetime)-> Vector3:
         if body.upper() not in NAIF_IDS:
             raise RuntimeError('Invalid celestial body: %s' % body)
         k_list = ['lsk', 'tpc']
-        if body.upper() in PLANETS:
+        body_u = body.upper()
+        satellites = KERNELS['spk']['satellites']  # planet name (lowercase) -> kernel
+        if body_u in PLANETS:
             k_list.append('spk/planets')
-        elif body.upper() in SATELLITES_PLANET.keys():
+            # The planet *body* center (e.g. Mars 499) is provided by the per-planet
+            # satellite SPK, not the DE ephemeris (which supplies system barycenters).
+            if body.lower() in satellites:
+                k_list.append('spk/satellites/' + body.lower())
+        elif body_u in SATELLITES_PLANET:
             k_list.append('spk/planets')
-            k_list.append('spk/satellites/' + SATELLITES_PLANET[body.upper()])
+            # KERNELS['spk']['satellites'] is keyed by the lowercase planet name.
+            k_list.append('spk/satellites/' + SATELLITES_PLANET[body_u].lower())
+        elif body_u == 'MOON':
+            k_list.append('spk/planets')  # the Moon (301) is provided by the DE ephemeris
         self._init_kernels(k_list)
         dt_str = dt.strftime('%Y-%m-%d %H:%M:%S UTC')
         et = spice.str2et(dt_str)
@@ -195,4 +221,6 @@ class SpiceQuery(AbsSpaceQuery):
         except spice.exceptions.SpiceyError as err:
             raise RuntimeError("Kernels loaded: %s" % str(k_list)) from err
         self._clear_kernels()
-        return self._spherical_to_cartesian(position)
+        # spkpos already returns a cartesian ECLIPJ2000 vector in km (geocentric);
+        # return it directly rather than treating it as a polar coordinate.
+        return Vector3(float(position[0]) * u.km, float(position[1]) * u.km, float(position[2]) * u.km)

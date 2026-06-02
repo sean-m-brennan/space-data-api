@@ -20,8 +20,6 @@ from datetime import datetime
 from enum import Enum
 import math
 
-from astropy.visualization.wcsaxes import SphericalCircle
-
 try:
     from typing import Type, TypeVar
 except ImportError:
@@ -142,13 +140,15 @@ class AbsSpaceQuery:
 
     def terrestrial_to_celestial(self, position: LatLonAlt, dt: datetime) -> Vector3:
         """Convenience function for converting ECEF coordinates to *cartesian* ECLIPJ2K"""
-        return self._spherical_to_cartesian(
-            self.transform_coordinates(position, CoordRefFrame.ITRF, CoordRefFrame.ECLIPJ2K, dt))
+        # Polar ITRF in -> polar ECLIPJ2K (RaDec) out, then to the requested cartesian.
+        radec = self.transform_coordinates(position, CoordRefFrame.ITRF, CoordRefFrame.ECLIPJ2K, dt)
+        return self._spherical_to_cartesian(radec)
 
     def celestial_to_terrestrial(self, position: Vector3, dt: datetime) -> LatLonAlt:
         """Convenience function for converting *cartesian* ECLIPJ2K coordinates to ECEF"""
-        return self.transform_coordinates(self._cartesian_to_polar(position),
-                                          CoordRefFrame.ECLIPJ2K, CoordRefFrame.ITRF, dt)
+        # Cartesian in -> cartesian ITRF out (same form), then to terrestrial LatLonAlt.
+        cart_itrf = self.transform_coordinates(position, CoordRefFrame.ECLIPJ2K, CoordRefFrame.ITRF, dt)
+        return self._cartesian_to_polar(cart_itrf, LatLonAlt)
 
     @classmethod
     def _validate_frame(cls, frame: CoordRefFrame|str) -> CoordRefFrame:
@@ -167,11 +167,20 @@ class AbsSpaceQuery:
 
     @staticmethod
     def _spherical_to_cartesian(position: LatLonAlt|RaDec) -> Vector3:
-        pos_vec = position.to_list()
-        [phi, rho, dist] = map(lambda n: n.magnitude * (math.pi / 180.), pos_vec)
-        x = dist * math.cos(phi) * math.cos(rho) * pos_vec[2].units # greenwich at equator
-        y = dist * math.cos(phi) * math.sin(rho) * pos_vec[2].units
-        z = dist * math.sin(phi)  * pos_vec[2].units # through poles
+        # from_center() yields the GEOCENTRIC radial triple: for LatLonAlt it adds
+        # earth_radius to the altitude (height-above-surface -> radius); for RaDec it is
+        # the distance unchanged.
+        pos_vec = position.from_center()
+        # Only the two ANGLES (lat/dec, lon/ra) convert degrees->radians; the third
+        # element is a radial distance and must keep its magnitude (was erroneously
+        # scaled by pi/180, shrinking every vector by ~57x).
+        phi = pos_vec[0].magnitude * (math.pi / 180.)
+        rho = pos_vec[1].magnitude * (math.pi / 180.)
+        dist = pos_vec[2].magnitude
+        units = pos_vec[2].units
+        x = dist * math.cos(phi) * math.cos(rho) * units  # greenwich at equator
+        y = dist * math.cos(phi) * math.sin(rho) * units
+        z = dist * math.sin(phi) * units  # through poles
         return Vector3(x, y, z)  # units are automatic from dist
 
     T = TypeVar('T', bound=LatLonAlt|RaDec)
@@ -179,12 +188,15 @@ class AbsSpaceQuery:
     @staticmethod
     def _cartesian_to_polar(position: Vector3, klass: Type[T] = LatLonAlt) -> T:
         unit = position.z.units
-        dist = math.sqrt(position.x.magnitude**2 + position.y.magnitude**2 + position.z**2)
-        rho = math.atan2(position.y.magnitude, position.x.magnitude)
+        # NB: .magnitude on z too — a bare pint quantity here raised DimensionalityError
+        # (km**2 + dimensionless), so this method never previously returned.
+        dist = math.sqrt(position.x.magnitude**2 + position.y.magnitude**2 + position.z.magnitude**2)
+        rho = math.atan2(position.y.magnitude, position.x.magnitude)  # already in [-pi, pi]
         phi = math.asin(position.z.magnitude / dist)
-        if rho > 2 * math.pi:
-            rho = rho - 2 * math.pi
-        elif rho < -2 * math.pi:
-            rho = rho + 2 * math.pi
         phi, rho = map(lambda n: n * (180. / math.pi) * u.degrees, [phi, rho])
-        return klass(phi, rho, dist * unit)
+        # Inverse of from_center: a terrestrial LatLonAlt reports height ABOVE the surface,
+        # so strip earth_radius from the geocentric distance; celestial RaDec keeps it.
+        radial = dist * unit
+        if klass is LatLonAlt:
+            radial = radial - earth_radius * u.km
+        return klass(phi, rho, radial)
