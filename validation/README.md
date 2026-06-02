@@ -69,23 +69,29 @@ cd packages/space-sim && npm test -- ephemeris_validation_live
 
 ## Optional: end-to-end against a running service (`--live`)
 
-To additionally exercise the HTTP `/position/` path (token auth + self-signed cert):
+To additionally exercise the live HTTP layer (token auth + self-signed cert + `/position/`).
+Running the service needs the runtime deps, so use `requirements-test.txt` (it pins `libpass`
++ `uvicorn`; stock `passlib` 1.7.4 crashes against `bcrypt>=4.1`):
 
 ```bash
+cd packages/space-data-api
+uv pip install --python .venv/bin/python -r validation/requirements-test.txt
+
 # terminal 1 — start the service (uses app/cert.pem, app/key.pem)
-cd packages/space-data-api/app && ../.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 \
-    --ssl-keyfile ./key.pem --ssl-certfile ./cert.pem
+.venv/bin/uvicorn main:app --app-dir app --host 127.0.0.1 --port 8000 \
+    --ssl-keyfile app/key.pem --ssl-certfile app/cert.pem
 
 # terminal 2 — capture raw service responses alongside the truth
-cd packages/space-data-api
 set -a; . ./.env; set +a            # VITE_OAUTH_USER / VITE_OAUTH_PWD
-.venv/bin/python validation/generate_ephemeris_truth.py --live https://localhost:8000 \
+.venv/bin/python validation/generate_ephemeris_truth.py --live https://127.0.0.1:8000 \
     --stamp "$(date -u +%FT%TZ)" --out /tmp/ephemeris_truth_live.json
 ```
 
 Each record gains a `liveService` field. The generator computes truth from the ephemeris
 libraries directly (not via the service) so the oracle stays independent of the code under
-test; `--live` is for inspecting the raw HTTP responses.
+test; `--live` is for inspecting the raw HTTP responses. Verified end-to-end: all 57 records
+returned over HTTPS match the spice truth to <0.011° (`/convert`, `/terrestrial2celestial`,
+`/celestial2terrestrial` round-trip correctly too).
 
 ## Service-code fixes
 

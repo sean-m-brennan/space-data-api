@@ -47,8 +47,11 @@ class SphericalCoords(BaseModel):
 
     @classmethod
     def from_radec(cls, rdd: RaDec):
+        # SphericalCoords stores celestial coords as lat=declination, lon=right ascension
+        # (mirror of to_radec). The model has no ra/dec fields, so those kwargs raised under
+        # extra='forbid'.
         assert rdd.ra.units == u.degree and rdd.dec.units == u.degree
-        return cls(ra=rdd.ra.magnitude, dec=rdd.dec.magnitude, alt=rdd.dist.magnitude, units=str(rdd.dist.units))
+        return cls(lat=rdd.dec.magnitude, lon=rdd.ra.magnitude, alt=rdd.dist.magnitude, units=str(rdd.dist.units))
 
 
 def transfer_coords(coords: Position, klass: LatLonAlt|RaDec = LatLonAlt):

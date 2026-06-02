@@ -143,11 +143,12 @@ def astro_ecliptic(body: str, iso: str):
 def query_live(url: str, body: str, iso: str, user: str, pwd: str):
     """Optionally exercise the running HTTP service end-to-end (POST /position/).
 
-    Returns the raw CartesianCoords dict or an {'error': ...} marker. The service's
-    frame depends on its configured backend (currently 'astro' -> equatorial), so this
-    is captured for reference, not used as truth.
+    Returns the raw CartesianCoords dict (geocentric ECLIPJ2000 km, either backend) or an
+    {'error': ...} marker. Captured for reference / to exercise the HTTP layer, not used as
+    the truth oracle (that stays computed directly from the ephemeris libraries).
     """
     import ssl
+    import urllib.parse
     import urllib.request
 
     ctx = ssl.create_default_context()
@@ -161,7 +162,9 @@ def query_live(url: str, body: str, iso: str, user: str, pwd: str):
             return json.loads(resp.read().decode())
 
     try:
-        form = f"username={user}&password={pwd}".encode()
+        # urlencode so reserved characters in the password (e.g. '+') survive transport;
+        # a bare f-string would let '+' decode to a space server-side and fail auth (403).
+        form = urllib.parse.urlencode({"username": user, "password": pwd}).encode()
         token = _post("/token", form,
                       {"Content-Type": "application/x-www-form-urlencoded"})
         body_json = json.dumps({"ident": "live", "body": body, "dt": iso}).encode()
