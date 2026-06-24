@@ -60,6 +60,7 @@ export default class SpaceData {
     private readonly debug: boolean
     private cachedToken: AuthToken | null
     private expiration: number
+    private available: boolean | null  // last-known reachability; null until first probed
 
 
     constructor(config: SpaceDataConfig, debug: boolean = false) {
@@ -68,6 +69,7 @@ export default class SpaceData {
         this.debug = debug
         this.cachedToken = null
         this.expiration = 0
+        this.available = null
 
         client.setConfig({
             baseUrl: this.baseUrl,
@@ -77,11 +79,16 @@ export default class SpaceData {
     async check(): Promise<SpaceData | null> {
         try {
             await checkGet()
-            if (this.debug)
-                console.debug("Service is available")
+            // check() runs every propagation tick, so only log on a reachability transition
+            // (the offline fallback is normal operation, not a per-frame warning).
+            if (this.available !== true && this.debug)
+                console.debug("Space data service is available")
+            this.available = true
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (_e) {
-            console.warn("Space data service is unavailable")
+            if (this.available !== false)
+                console.warn("Space data service is unavailable; using computed orbits")
+            this.available = false
             return null
         }
         return this

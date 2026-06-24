@@ -1,0 +1,16 @@
+# The Dockerfile only consumes environment.yaml and the app/ directory.
+# Drop everything else (and the heavy local Python/node trees) from the context.
+node_modules
+dist
+.venv
+.turbo
+.idea
+.vercel
+__pycache__
+**/__pycache__
+**/.pytest_cache
+*.tsbuildinfo
+*.tgz
+lib/client
+# Kernels are (re)downloaded during the image build by download_kernels.py.
+app/kernels
