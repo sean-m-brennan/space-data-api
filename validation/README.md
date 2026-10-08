@@ -25,7 +25,7 @@ Regenerate the fixture only when the bodies/dates/tolerances change.
 
 ## Setup (one-time)
 
-The generator's deps are not the conda-only set in `environment.yaml`, so use a plain venv:
+The generator's deps are not the conda-only set in `environment.yml`, so use a plain venv:
 
 ```bash
 cd packages/space-data-api

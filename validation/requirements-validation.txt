@@ -1,6 +1,6 @@
 # Dependencies for the ephemeris validation harness (generate_ephemeris_truth.py).
 #
-# These mirror the conda-only environment.yaml so the generator can run in a plain
+# These mirror the conda-only environment.yml so the generator can run in a plain
 # venv. Importing the shipped backends pulls in:
 #   - astropy + jplephem + pint  -> api.astro_converter / api.abstract_query
 #   - spiceypy + requests + bs4   -> api.spice_converter

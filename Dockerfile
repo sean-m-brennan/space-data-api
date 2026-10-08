@@ -2,8 +2,8 @@ FROM mambaorg/micromamba
 
 WORKDIR /app
 
-COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yaml ./environment.yaml
-RUN micromamba install -y -n base -f ./environment.yaml && \
+COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml ./environment.yml
+RUN micromamba install -y -n base -f ./environment.yml && \
     micromamba clean --all --yes
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1

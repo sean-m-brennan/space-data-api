@@ -1,4 +1,4 @@
-# The Dockerfile only consumes environment.yaml and the app/ directory.
+# The Dockerfile only consumes environment.yml and the app/ directory.
 # Drop everything else (and the heavy local Python/node trees) from the context.
 node_modules
 dist
